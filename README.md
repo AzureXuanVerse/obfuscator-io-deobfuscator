@@ -14,6 +14,12 @@ Install via `npm install -g obfuscator-io-deobfuscator`
 
 Usage: `obfuscator-io-deobfuscator <input> -o [output]`
 
+## CLI for Development
+
+cd into the project directory and install via `npm install`
+
+Usage: `node ./dist/cli.js <input> -o [output]`
+
 ## Features
 
 -   Recovers strings
