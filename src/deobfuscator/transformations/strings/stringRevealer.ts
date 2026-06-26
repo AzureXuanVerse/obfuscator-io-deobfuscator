@@ -142,7 +142,7 @@ export class StringRevealer extends Transformation {
                                     return;
                                 }
                             } else {
-                                log('Unknown reference to string array function, !isBasicStringArrayWrapper and !isComplexStringArrayWrapper');
+                                log('Unknown reference to string array function, !isBasicStringArrayWrapper and !isComplexStringArrayWrapper and !isBasicStringArrayWrapperVariant');
                                 return;
                             }
                         } else if (
