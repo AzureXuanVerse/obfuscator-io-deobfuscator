@@ -95,6 +95,35 @@ export class StringRevealer extends Transformation {
                                 wrapperFunctionSet.add(
                                     functionParent as NodePath<t.FunctionDeclaration>
                                 );
+                            } else if (self.isComplexStringArrayWrapperVariant(functionParent.node, arrayName)) {
+                                const body = (functionParent.node as any).body.body;
+                                const offsetExpression = body[0].expression.right;
+                                const absoluteOffset = offsetExpression.right.value;
+                                const offset =
+                                    offsetExpression.operator == '+'
+                                        ? absoluteOffset
+                                        : -absoluteOffset;
+
+                                const src = generate(functionParent.node).code;
+                                if (BASE_64_WRAPPER_REGEX.test(src)) {
+                                    if (RC4_WRAPPER_REGEX.test(src)) {
+                                        const decoder = new Rc4StringDecoder(stringArray, offset);
+                                        stringDecoders.push(decoder);
+                                    } else {
+                                        const decoder = new Base64StringDecoder(
+                                            stringArray,
+                                            offset
+                                        );
+                                        stringDecoders.push(decoder);
+                                    }
+
+                                    wrapperFunctionSet.add(
+                                        functionParent as NodePath<t.FunctionDeclaration>
+                                    );
+                                } else {
+                                    log('Unknown string array wrapper type');
+                                    return;
+                                }
                             } else if (self.isBasicStringArrayWrapperVariant(functionParent.node, arrayName)) {
                                 const body = (functionParent.node as any).body.body;
                                 const offsetExpression = body[0].expression.right;
@@ -142,7 +171,7 @@ export class StringRevealer extends Transformation {
                                     return;
                                 }
                             } else {
-                                log('Unknown reference to string array function, !isBasicStringArrayWrapper and !isComplexStringArrayWrapper and !isBasicStringArrayWrapperVariant');
+                                log('Unknown reference to string array function, !isBasicStringArrayWrapper and !isComplexStringArrayWrapper');
                                 return;
                             }
                         } else if (
@@ -539,6 +568,40 @@ export class StringRevealer extends Transformation {
                 t.isIdentifier(statement.argument) &&
                 statement.argument.name === resultName
         );
+    }
+
+    /*
+        Flat complex variant — same offset-first layout as the basic variant
+        but with base64/RC4 decoding and caching logic inline:
+
+        function relay(scheduler, node) {
+            scheduler = scheduler - 334;
+            const queue = item();
+            let res = queue[scheduler];
+            if (relay.kziBxw === undefined) {
+                var setup = function (payload) { ... base64 ... };
+                relay.KosdwQ = setup;
+                relay.ArGtil = {};
+                relay.kziBxw = true;
+            }
+            const token = queue[0];
+            const flag = scheduler + token;
+            const ptr = relay.ArGtil[flag];
+            if (!ptr) { res = relay.KosdwQ(res); relay.ArGtil[flag] = res; }
+            else { res = ptr; }
+            return res;
+        }
+    */
+    private isComplexStringArrayWrapperVariant(
+        node: t.Node,
+        stringArrayName: string
+    ): node is t.FunctionDeclaration {
+        if (!this.isBasicStringArrayWrapperVariant(node, stringArrayName)) {
+            return false;
+        }
+
+        const statements = (node as t.FunctionDeclaration).body.body;
+        return statements.some(s => t.isIfStatement(s));
     }
 
     /**
